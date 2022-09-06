@@ -7,6 +7,8 @@ import (
 	"log"
 )
 
+
+
 func Create(datasets datastruct.Datasets) int64 {
 
 	db := config.CreateConnection()
@@ -87,7 +89,7 @@ func Delete(id int64) int64 {
 	return rowsAffected
 }
 
-func Get_All(search string, sort string, filter string, page int) ([]datastruct.Datasets, error) {
+func Get_All(search string, sort string, filter string, page int) (int, int, []datastruct.Datasets, error) {
 	db := config.CreateConnection()
 
 
@@ -119,6 +121,7 @@ func Get_All(search string, sort string, filter string, page int) ([]datastruct.
 		sqlStatement = fmt.Sprintf("%s LIMIT %d OFFSET %d" , sqlStatement, perPage, (page - 1) * perPage)
 	}
 
+
 	rows, err := db.Query(sqlStatement)
 
 	if err != nil {
@@ -141,7 +144,12 @@ func Get_All(search string, sort string, filter string, page int) ([]datastruct.
 
 		datasets = append(datasets, data)
 	}
-	return datasets, err
+
+	totalData := len(datasets)
+
+	totalPage := (totalData / 10) + 1
+
+	return totalData, totalPage, datasets, err
 }
 
 
@@ -166,6 +174,50 @@ func Get_Data(id int64) (datastruct.Datasets) {
 	}
 
 	return datasets
+}
+
+
+func Get_tahun(tahunAwal int64, tahunAkhir int64) (int, int, []datastruct.Datasets, error) {
+	db := config.CreateConnection()
+
+
+	defer db.Close()
+
+	var datasets []datastruct.Datasets
+
+
+	sqlStatement := `SELECT * FROM datasets WHERE tahun_awal_data >= $1 AND tahun_akhir_data <= $2`
+
+
+
+	rows, err := db.Query(sqlStatement, tahunAwal, tahunAkhir)
+
+	if err != nil {
+		log.Fatalf("sql : %s tidak bisa mengeksekusi query. %v", sqlStatement, err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var data datastruct.Datasets
+
+		err = rows.Scan(&data.Kode_data, &data.Topik, &data.Grup, &data.Judul, &data.TahunAwalData, &data.TahunAkhirData,
+						&data.SumberData, &data.TautanSumberData, &data.TautanDatasetTerkait,
+						&data.OrganisasiTerkait, &data.FrekuensiPenerbitan, &data.LastUpdated, &data.JenisData)
+
+		
+		if err != nil {
+			log.Fatalf("tidak bisa mengambil data. %v", err)
+		}
+
+		datasets = append(datasets, data)
+	}
+
+	totalData := len(datasets)
+
+	totalPage := (totalData / 10) + 1
+
+	return totalData, totalPage, datasets, err
 }
 
 

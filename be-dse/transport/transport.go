@@ -136,10 +136,10 @@ func Get_All_Datasets(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Context-Type", "application/x-www-form-urlencoded")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	searchQuery := r.URL.Query().Get("search")
 	
+	searchQuery := r.URL.Query().Get("search")
 
-	 sortBy := r.URL.Query().Get("sortBy")
+	sortBy := r.URL.Query().Get("sortBy")
 	 if sortBy == "" {
 		 // id.asc is the default sort query
 		 sortBy = "judul.asc"
@@ -150,9 +150,10 @@ func Get_All_Datasets(w http.ResponseWriter, r *http.Request) {
 		 return
 	 }
 
+	page := 0
     strPage := r.URL.Query().Get("page")
-    page := 1
     if strPage != "" {
+		page = 1
         page, err = strconv.Atoi(strPage)
         if err != nil || page < 1 {
             http.Error(w, "page query parameter is no valid number", http.StatusBadRequest)
@@ -170,18 +171,46 @@ func Get_All_Datasets(w http.ResponseWriter, r *http.Request) {
         }
     }
 
-	datasets, err := service.Get_All(searchQuery, sortQuery, filterQuery, page)
+	
+	tahun := r.URL.Query().Get("tahun")
+	var tahunAwal int64 
+	var tahunAkhir int64
+    if tahun != "" {
+        tahunAwal, tahunAkhir, err = logging.ValidateAndReturnTahun(tahun)
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
 
-	if err != nil {
-		log.Fatalf("Tidak bisa mengambil data. %v", err)
+		totalData, totalPage, datasets, err := service.Get_tahun(tahunAwal, tahunAkhir)
+		if err != nil {
+			log.Fatalf("Tidak bisa mengambil data. %v", err)
+		}
+	
+		var response datastruct.ResponseGetAll
+		response.Status = 200
+		response.TotalData = totalData
+		response.TotalPage = totalPage
+		response.Message = "Success"
+		response.Data = datasets
+	
+		json.NewEncoder(w).Encode(response)
+    }else{
+	
+		totalData, totalPage, datasets, err := service.Get_All(searchQuery, sortQuery, filterQuery, page)
+		if err != nil {
+			log.Fatalf("Tidak bisa mengambil data. %v", err)
+		}
+	
+		var response datastruct.ResponseGetAll
+		response.Status = 200
+		response.TotalData = totalData
+		response.TotalPage = totalPage
+		response.Message = "Success"
+		response.Data = datasets
+	
+		json.NewEncoder(w).Encode(response)
 	}
-
-	var response datastruct.ResponseGetAll
-	response.Status = 200
-	response.Message = "Success"
-	response.Data = datasets
-
-	json.NewEncoder(w).Encode(response)
 }
 
 
